@@ -1,4 +1,5 @@
 import * as Discord from 'discord.js';
+import * as http from 'http';
 import readline from 'readline';
 
 import PlanningCommand from './commands/planning';
@@ -50,3 +51,11 @@ client.on('messageReactionRemove', async (reaction, user) => {
 });
 
 client.login(process.env.DISCORD_TOKEN);
+
+// Create a fake server for the deployment
+const server = http.createServer((request, response) => {
+	response.writeHead(200, { 'Content-Type': 'text/plain' });
+	response.end('Nothing here\n');
+});
+
+server.listen(process.env.PORT);
