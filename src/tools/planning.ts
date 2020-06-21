@@ -7,9 +7,15 @@ const NB_DAYS_IN_WEEK = 7;
 
 export const DAY_EMOJIS = ['🇱', '🇲', 'Ⓜ️', '🇯', '🇻', '🇸', '🇩'];
 
-export function generateWeekPlanningMessage(message?: Discord.Message) {
+export async function generateWeekPlanningMessage(message?: Discord.Message, week?: number) {
 	const weekBeginning = moment().startOf('week');
 	const weekEnd = moment().endOf('week');
+
+	if (week) {
+		weekBeginning.set('week', week);
+		weekEnd.set('week', week).endOf('week');
+	}
+
 	const currentDate = moment(weekBeginning);
 
 	let content = `**Disponibilités pour la semaine du ${weekBeginning.format(
@@ -20,15 +26,17 @@ export function generateWeekPlanningMessage(message?: Discord.Message) {
 		content += `- ${currentDate.format('dddd LL')} : `;
 
 		if (message) {
-			const dayReaction = message.reactions.find(
+			const dayReaction = message.reactions.cache.find(
 				(reaction) => reaction.emoji.name === DAY_EMOJIS[i],
 			);
 			const nbReactions = dayReaction.count - 1;
 
 			if (nbReactions > 0) {
+				await dayReaction.users.fetch();
+
 				content += `*${nbReactions} personne${
 					nbReactions > 1 ? 's' : ''
-				}* (${dayReaction.users.reduce(
+				}* (${dayReaction.users.cache.reduce(
 					(acc, user) => (!user.bot ? `${acc} ${user.username}` : acc),
 					'',
 				)} )`;

@@ -1,47 +1,56 @@
 import * as Discord from 'discord.js';
 import * as moment from 'moment';
 
-import Logger from '../tools/logger';
+import { getMessageKey, getKeyFromMessage, getArgsFromMessage } from '../tools/commands';
 import { DAY_EMOJIS, generateWeekPlanningMessage } from '../tools/planning';
 
-const createdMessageIds: Array<string> = [];
+const COMMAND_KEY = '.planning';
 
 async function updatePlanning(reaction: Discord.MessageReaction, user: Discord.User) {
 	if (
 		!user.bot &&
 		DAY_EMOJIS.indexOf(reaction.emoji.name) !== -1 &&
-		createdMessageIds.indexOf(reaction.message.id) !== -1
+		getKeyFromMessage(reaction.message.content) === COMMAND_KEY
 	) {
-		await reaction.message.edit(generateWeekPlanningMessage(reaction.message));
+		const args = getArgsFromMessage(reaction.message.content);
+
+		let weekNumber = moment().week();
+
+		if (args && args[0] && !isNaN(parseInt(args[0]))) {
+			weekNumber = parseInt(args[0]);
+		}
+
+		const planningMessage = await generateWeekPlanningMessage(reaction.message, weekNumber);
+
+		await reaction.message.edit(
+			`${getMessageKey(COMMAND_KEY, String(weekNumber))} - ${planningMessage}`,
+		);
 	}
 }
 
 export default {
-	key: '.planning',
+	key: COMMAND_KEY,
 	exec: async (message: Discord.Message) => {
-		const newMessage = await message.channel.send(generateWeekPlanningMessage());
+		let weekNumber = moment().week();
+
+		const args = message.content.split(' ');
+
+		if (args[1] === 'next') {
+			weekNumber++;
+		} else if (!isNaN(parseInt(args[1]))) {
+			weekNumber = parseInt(args[1]);
+		}
+
+		const planningMessage = await generateWeekPlanningMessage(null, weekNumber);
+
+		const newMessage = await message.channel.send(
+			`${getMessageKey(COMMAND_KEY, String(weekNumber))} - ${planningMessage}`,
+		);
 
 		if (!Array.isArray(newMessage)) {
-			createdMessageIds.push(newMessage.id);
-
 			await DAY_EMOJIS.reduce((promise, emoji) => {
 				return promise.then(() => newMessage.react(emoji));
 			}, Promise.resolve());
-
-			const timeBeforeEndOfWeek =
-				moment()
-					.endOf('week')
-					.valueOf() - moment().valueOf();
-
-			setTimeout(() => {
-				newMessage.clearReactions();
-
-				const index = createdMessageIds.indexOf(newMessage.id);
-
-				if (index !== -1) {
-					createdMessageIds.splice(index, 1);
-				}
-			}, timeBeforeEndOfWeek);
 		}
 
 		await message.delete();

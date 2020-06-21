@@ -18,7 +18,7 @@ if (!process.env.DISCORD_TOKEN) {
 	process.exit(-1);
 }
 
-const client = new Discord.Client();
+const client = new Discord.Client({ partials: ['MESSAGE', 'REACTION'] });
 
 const commands = [PlanningCommand];
 
@@ -27,6 +27,10 @@ client.on('ready', () => {
 });
 
 client.on('message', async (message) => {
+	if (message.partial) {
+		await message.fetch();
+	}
+
 	const command = commands.find((command) => message.content.startsWith(command.key));
 
 	if (command) {
@@ -35,17 +39,33 @@ client.on('message', async (message) => {
 });
 
 client.on('messageReactionAdd', async (reaction, user) => {
+	if (reaction.partial) {
+		await reaction.fetch();
+	}
+
+	if (user.partial) {
+		await user.fetch();
+	}
+
 	commands.forEach((command) => {
 		if (command.onMessageReactionAdd) {
-			command.onMessageReactionAdd(reaction, user);
+			command.onMessageReactionAdd(reaction, user as Discord.User);
 		}
 	});
 });
 
 client.on('messageReactionRemove', async (reaction, user) => {
+	if (reaction.partial) {
+		await reaction.fetch();
+	}
+
+	if (user.partial) {
+		await user.fetch();
+	}
+
 	commands.forEach((command) => {
 		if (command.onMessageReactionRemove) {
-			command.onMessageReactionRemove(reaction, user);
+			command.onMessageReactionRemove(reaction, user as Discord.User);
 		}
 	});
 });
